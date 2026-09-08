@@ -1,0 +1,9 @@
+## Interface: 11200
+## Title: |cffb8c0ccHC|r |cffa335eeGhost Buddy|r
+## Notes: A small Ghost Saber icon with a 10-minute summon countdown for Glowing Cat Figurine.
+## Author: MawAddons
+## Version: 1.0.1
+## SavedVariablesPerCharacter: HCGhostBuddyDB
+
+Core.lua
+UI.lua
