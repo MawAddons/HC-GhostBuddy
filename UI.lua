@@ -11,13 +11,14 @@ function Buddy:ApplyPosition()
 end
 
 function Buddy:CreateIcon()
-    local frame = CreateFrame("Frame", "HCGhostBuddyIcon", UIParent)
+    local frame = CreateFrame("Button", "HCGhostBuddyIcon", UIParent)
     self.frame = frame
     frame:SetFrameStrata("MEDIUM")
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
+    frame:RegisterForClicks("LeftButtonUp")
     frame:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -54,6 +55,13 @@ function Buddy:CreateIcon()
     testLabel:SetText("TEST")
     testLabel:Hide()
 
+    local buddyName = frame:CreateFontString(nil, "OVERLAY")
+    frame.buddyName = buddyName
+    buddyName:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    buddyName:SetPoint("BOTTOM", frame, "TOP", 0, 4)
+    buddyName:SetTextColor(0.75, 0.95, 1.0)
+    buddyName:Hide()
+
     frame:SetScript("OnDragStart", function()
         if not Buddy.DB.locked or IsShiftKeyDown() then
             frame.dragging = true
@@ -64,11 +72,18 @@ function Buddy:CreateIcon()
         if not frame.dragging then return end
         frame:StopMovingOrSizing()
         frame.dragging = nil
+        frame.wasDragged = true
         local x, y = frame:GetCenter()
         local parentX, parentY = UIParent:GetCenter()
         Buddy.DB.x = x - parentX
         Buddy.DB.y = y - parentY
         Buddy:ApplyPosition()
+    end)
+    frame:SetScript("OnClick", function()
+        if frame.wasDragged then frame.wasDragged = nil; return end
+        if TargetByName then
+            TargetByName(Buddy.SABER_NAME, true)
+        end
     end)
     frame:SetScript("OnEnter", function()
         GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
@@ -84,6 +99,7 @@ function Buddy:CreateIcon()
         GameTooltip:AddLine("10-minute duration estimate; ends early if the saber dies.", 0.7, 0.7, 0.7)
         GameTooltip:AddLine("/hcg clear clears an early death or dismissal.", 0.7, 0.7, 0.7)
         GameTooltip:AddLine("Shift-drag: move.  /hcg help: options.", 0.55, 0.95, 1)
+        GameTooltip:AddLine("Click: target your Ghost Saber.", 0.55, 0.95, 1)
         GameTooltip:Show()
     end)
     frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -110,6 +126,12 @@ function Buddy:Refresh()
     local frame = self.frame
     if remaining <= 0 and not self.preview then frame:Hide(); return end
     frame.timer:SetText(self:FormatTime(remaining > 0 and remaining or self.DURATION))
+    if self.DB.buddyName and self.DB.buddyName ~= "" then
+        frame.buddyName:SetText(self.DB.buddyName)
+        frame.buddyName:Show()
+    else
+        frame.buddyName:Hide()
+    end
     if self.demo then frame.testLabel:Show() else frame.testLabel:Hide() end
     frame:SetAlpha(1)
     if remaining > 0 and remaining <= 30 then

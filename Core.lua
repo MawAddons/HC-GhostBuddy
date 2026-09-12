@@ -4,8 +4,9 @@ local Buddy = HCGhostBuddy
 Buddy.DURATION = 600
 Buddy.ITEM_ID = 5332
 Buddy.ITEM_COOLDOWN = 3600
-Buddy.VERSION = "1.0.1"
+Buddy.VERSION = "1.1.0"
 Buddy.COLORED_NAME = "|cffb8c0ccHC|r |cffa335eeGhost Buddy|r"
+Buddy.SABER_NAME = "Ghost Saber"
 
 function Buddy:Print(message)
     DEFAULT_CHAT_FRAME:AddMessage(self.COLORED_NAME .. ": " .. message)
@@ -81,6 +82,7 @@ function Buddy:Initialize()
     db.dismissedUse = tonumber(db.dismissedUse)
     db.expiresAt = tonumber(db.expiresAt)
     db.usedAt = tonumber(db.usedAt)
+    db.buddyName = tostring(db.buddyName or "")
     if db.expiresAt and db.expiresAt > time() and db.expiresAt <= time() + self.DURATION then
         self.endTime = GetTime() + db.expiresAt - time()
         self.usedAt = db.usedAt or (db.expiresAt - self.DURATION)
@@ -96,8 +98,9 @@ end
 
 function Buddy:Command(message)
     if not self.DB then return end
-    message = string.lower(message or "")
-    local _, _, command, value = string.find(message, "^%s*(%S*)%s*(.-)%s*$")
+    local raw = message or ""
+    local _, _, command, value = string.find(raw, "^%s*(%S*)%s*(.-)%s*$")
+    command = string.lower(command or "")
     if command == "" or command == "show" then
         self.preview = not self.preview
         self:Print(self.preview and "Preview on. Shift-drag the icon to move it; /hcg hides the preview." or "Preview off. The icon appears automatically during a summon.")
@@ -129,6 +132,17 @@ function Buddy:Command(message)
         end
         self.DB.size = size
         self:ApplyPosition()
+    elseif command == "name" then
+        value = string.gsub(value or "", "^%s+", "")
+        value = string.gsub(value, "%s+$", "")
+        if string.lower(value) == "off" or string.lower(value) == "clear" then value = "" end
+        if string.len(value) > 24 then value = string.sub(value, 1, 24) end
+        self.DB.buddyName = value
+        if value == "" then
+            self:Print("Custom name hidden. Use /hcg name Your Name to set one.")
+        else
+            self:Print("Your Ghost Saber is now called |cffffffff" .. value .. "|r.")
+        end
     elseif command == "reset" then
         self.DB.size = 44
         self.DB.x = 110
@@ -146,7 +160,7 @@ function Buddy:Command(message)
         end
     else
         self:Print("/hcg: preview; /hcg test: test countdown; /hcg clear: clear timer.")
-        self:Print("/hcg lock or unlock; /hcg size 44; /hcg reset; /hcg status.")
+        self:Print("/hcg lock or unlock; /hcg size 44; /hcg name Spooky; /hcg reset; /hcg status.")
     end
     self:Refresh()
 end

@@ -1,4 +1,4 @@
-# HC Ghost Buddy 1.0.1
+# HC Ghost Buddy 1.1.0
 
 Part of the **MawAddons HC suite**. The addon list, chat prefix, and tooltip use the same silver **HC** and purple **Ghost Buddy** name styling as the other HC addons. The matching title prefix groups it with the other HC entries in the addon list.
 
@@ -6,7 +6,7 @@ A small, ghostly blue saber icon that counts down **10:00 to 0:00** when you use
 
 ## Install
 
-1. Extract `HC-GhostBuddy-1.0.1.zip` into your WoW `Interface\AddOns` directory, replacing the existing `HC-GhostBuddy` files if updating.
+1. Extract `HC-GhostBuddy-1.1.0.zip` into your WoW `Interface\AddOns` directory, replacing the existing `HC-GhostBuddy` files if updating.
 2. Check the path is `Interface\AddOns\HC-GhostBuddy\HC-GhostBuddy.toc`.
 3. Restart the game if it was open when you added the folder, then enable **HC Ghost Buddy** on the character screen.
 
@@ -16,6 +16,8 @@ Equip Glowing Cat Figurine in either trinket slot and use it normally, including
 
 Type `/hcg` to preview the icon. **Hold Shift and drag** to position it, then type `/hcg` again to finish. The default size is 44 pixels. The icon uses the client's built-in white saber artwork with a cyan tint and border; no other addons or downloaded textures are required.
 
+Left-click the icon to target your nearby **Ghost Saber**. Give it a custom display name above the timer with `/hcg name Spooky`; use `/hcg name off` to hide the name.
+
 | Command | Action |
 | --- | --- |
 | `/hcg` or `/ghostbuddy` | Toggle the positioning preview. An active summon stays visible. |
@@ -24,6 +26,7 @@ Type `/hcg` to preview the icon. **Hold Shift and drag** to position it, then ty
 | `/hcg unlock` | Show the icon and allow ordinary dragging. |
 | `/hcg lock` | Finish positioning and require Shift to drag. |
 | `/hcg size 44` | Set icon size from 28 to 96 pixels. |
+| `/hcg name Spooky` | Show a custom name above the icon; `name off` clears it. |
 | `/hcg reset` | Restore default position and size, then show a preview. |
 | `/hcg status` | Print the current timer status. |
 | `/hcg help` | Show commands. |
