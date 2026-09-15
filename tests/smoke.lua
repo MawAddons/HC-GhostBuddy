@@ -45,6 +45,9 @@ function UnitAffectingCombat(token) local u = unit(token); return u and u.combat
 function UnitIsUnit(a, b) return unit(a) and unit(a) == unit(b) and 1 end
 function UnitHealth(token) return unit(token) and unit(token).health end
 function UnitHealthMax(token) return unit(token) and unit(token).maxHealth end
+function UnitPowerType(token) return unit(token) and unit(token).powerType end
+function UnitMana(token) return unit(token) and unit(token).power1 end
+function UnitManaMax(token) return unit(token) and unit(token).maxPower1 end
 function GetNumRaidMembers() return 0 end
 function TargetUnit(token) env.targeted = token end
 function TargetByName(name) env.targeted = name end
@@ -56,7 +59,7 @@ DEFAULT_CHAT_FRAME = { AddMessage = function(_, message) table.insert(env.messag
 
 local function widget(name)
     local w = { name = name, shown = true, scripts = {}, events = {}, lines = {} }
-    function w:GetName(guid) return guid and self.guid or self.name end
+    function w:GetName(guid) return guid and self.guid or name end
     function w:GetChildren() return unpack(self.children or {}) end
     function w:SetWidth(n) self.width = n end
     function w:SetHeight(n) self.height = n end
@@ -70,6 +73,10 @@ local function widget(name)
     function w:SetBackdropColor(r, g, b, a) end
     function w:SetBackdropBorderColor(r, g, b, a) self.border = { r, g, b, a } end
     function w:SetTexture(n, g, b, a) self.texture = n end
+    function w:SetStatusBarTexture(n) self.barTexture = n end
+    function w:SetStatusBarColor(r, g, b) self.barColor = { r, g, b } end
+    function w:SetMinMaxValues(low, high) self.minimum, self.maximum = low, high end
+    function w:SetValue(n) self.value = n end
     function w:SetTexCoord(a, b, c, d) end
     function w:SetPoint(p, parent, rp, x, y) self.point = { p, parent, rp, x or 0, y or 0 } end
     function w:ClearAllPoints() self.point = nil end
@@ -118,7 +125,7 @@ local function widget(name)
     return w
 end
 function CreateFrame(kind, name, parent, template)
-    check(kind == "Frame" or kind == "Button" or kind == "GameTooltip", "Unexpected modern UI frame type")
+    check(kind == "Frame" or kind == "Button" or kind == "GameTooltip" or kind == "StatusBar", "Unexpected modern UI frame type")
     local w = widget(name)
     if name then _G[name] = w end
     return w
@@ -167,6 +174,8 @@ check(B:FormatTime(1200) == "20:00" and B:FormatTime(59.2) == "1:00", "Clock for
 check(not next(B.states), "Idle addon starts a fictional summon")
 check(env.cvars.NP_EnableSpellGoEvents == "1" and env.cvars.NP_EnableAutoAttackEvents == "1", "Required event streams not enabled")
 B:Command(""); check(B.frames[5218]:IsShown() and B.frames[5332]:IsShown(), "Multi-pet preview")
+check(B.frames[5218].label.text == "DEMO" and B.frames[5218].mana:IsShown(), "Preview bars not marked as samples")
+check(not next(B.states), "Preview bars created real guardian state")
 B:Command(""); check(not B.frames[5218]:IsShown(), "Preview toggle")
 B:Command("name timberling Birk")
 B:Command("name saber Spooky")
@@ -209,7 +218,9 @@ check(table.getn(env.sounds) == 1, "Alert spam on repeated attacks")
 tick(1.1); t.health = 20
 tick(0.2)
 check(string.find(B.alert.text.text, "LOW HP", 1, true), "Low-health escalation suppressed")
-check(B.frames[5218].health.text == "32% HP", "HP percentage incorrect")
+check(B.frames[5218].health.value == 20 and B.frames[5218].health.maximum == 64
+    and B.frames[5218].health.text.text == "20 / 64", "Health bar and actual HP disagree")
+check(B.frames[5218].health.barColor[1] > B.frames[5218].health.barColor[2], "Low-health bar not red")
 check(table.getn(env.sounds) == 2, "Low HP did not produce an escalation sound")
 B:Command("sound off"); tick(7)
 check(table.getn(env.sounds) == 2, "Sound setting ignored")
@@ -305,26 +316,80 @@ fire("SPELL_START_OTHER", 0, 100, env.units.friend.guid, t.guid)
 check(B.alert.untilTime == alertTime, "Friendly heal produced an aggro warning")
 env.units.target = nil; env.units.hiddenBuddy = nil
 tick(2)
-check(B:Remaining(5218) > 0 and B.frames[5218].health.text == "", "Out of range was treated as death / stale HP displayed")
+check(B:Remaining(5218) > 0 and B.frames[5218].health.text.text == "HP --"
+    and B.frames[5218].health.value == 0, "Out of range was treated as death / stale HP displayed")
+
+-- Health and mana bars are independent and only show observed mana resources.
+load(nil, true)
+fire("SPELL_GO_SELF", 5218, 5780, env.units.player.guid)
+local frame = B.frames[5218]
+check(frame.health.text.text == "HP --" and not frame.mana:IsShown(), "Unbound summon shows fictional resources")
+t = timber("0x0000000000000002")
+t.powerType, t.power1, t.maxPower1 = 0, 40, 100
+tick(0.2)
+check(not frame.mana:IsShown() and frame.health.text.text == "HP --", "Other owner's resources leaked")
+t.summonedBy = env.units.player.guid
+tick(0.2)
+check(frame.health.value == 64 and frame.health.maximum == 64 and frame.health.text.text == "64 / 64", "Live HP bar")
+check(frame.mana:IsShown() and frame.mana.value == 40 and frame.mana.maximum == 100
+    and frame.mana.text.text == "40 / 100", "Live mana bar")
+check(frame.mana.barColor[3] > frame.mana.barColor[2], "Mana bar not blue")
+t.health, t.power1 = 48, 0; tick(0.2)
+check(frame.health.value == 48 and frame.mana:IsShown() and frame.mana.value == 0
+    and frame.mana.text.text == "0 / 100", "Zero mana was hidden or health stopped updating")
+for _, resource in ipairs({ 1, 2, 3 }) do
+    t.powerType = resource; tick(0.2)
+    check(not frame.mana:IsShown(), "Rage/focus/energy displayed as mana")
+end
+t.powerType, t.maxPower1 = 0, 0; tick(0.2)
+check(not frame.mana:IsShown(), "Creature without mana shows a mana bar")
+t.maxPower1, t.power1, t.health, t.maxHealth = 100, 70, nil, nil; tick(0.2)
+check(frame.health.text.text == "HP --" and frame.mana.value == 70, "Unavailable HP prevented mana updates")
+t.health, t.maxHealth, t.power1 = 50, 64, nil; tick(0.2)
+check(frame.health.value == 50 and frame.mana.text.text == "Mana --", "Unavailable mana retained a stale value")
+t.power1 = 55; tick(0.2)
+env.uptime = env.uptime + 1.1; B:Refresh()
+check(frame.health.text.text == "HP --" and frame.mana.text.text == "Mana --", "Old observations still look current")
+env.units.target = nil; tick(0.2)
+check(B:Remaining(5218) > 0 and frame.health.text.text == "HP --" and frame.mana.text.text == "Mana --", "Out-of-range resources / timer")
+env.units.buddy = t; tick(0.2)
+check(frame.health.value == 50 and frame.mana.value == 55, "GUID resource tracking did not resume")
+fire("SPELL_GO_SELF", 5332, 6084, env.units.player.guid)
+env.units.mouseover = { guid = "0xf13000000df20002", name = "Ghost Saber", friendly = true,
+    summonedBy = env.units.player.guid, health = 180, maxHealth = 200, powerType = 2, power1 = 50, maxPower1 = 100 }
+tick(0.2)
+check(B.frames[5332].health.value == 180 and not B.frames[5332].mana:IsShown()
+    and frame.health.value == 50 and frame.mana.value == 55, "Concurrent summons share resources")
+frame.scripts.OnEnter()
+check(string.find(table.concat(GameTooltip.lines, "\n"), "Mana: 55 / 100", 1, true), "Mana missing from tooltip")
+B:Command("clear all"); B:Command("test timberling")
+check(B.frames[5218].label.text == "TEST" and B.frames[5218].mana.value == 60
+    and not B.states[5218].manaAt, "Test samples recorded as live data")
 
 -- Stock API mode still loads, detects cooldowns, and avoids same-name ownership guesses.
 load(nil, false)
 env.equipment[13] = { id = 5332, start = env.uptime, duration = 3600 }
 tick(0.2); check(B:Remaining(5332) > 599, "Stock 1.12 cooldown fallback")
-env.units.target = { name = "Ghost Saber", friendly = true, health = 100, maxHealth = 100 }
+env.units.target = { name = "Ghost Saber", friendly = true, health = 100, maxHealth = 100,
+    powerType = 0, power1 = 30, maxPower1 = 60 }
 fire("PLAYER_TARGET_CHANGED")
 check(not B.states[5332].unit, "Stock client guessed ownership from same name")
 env.units.target.tooltip = { "Ghost Saber", "Pod's Minion" }
 fire("PLAYER_TARGET_CHANGED")
 check(B.states[5332].unit == "target", "Stock owner-tooltip fallback")
+tick(0.2)
+check(B.frames[5332].health.value == 100 and B.frames[5332].mana.value == 30, "Stock health/mana API fallback")
 env.units.target = { name = "Other creature", friendly = true, health = 1, maxHealth = 100 }
+fire("PLAYER_TARGET_CHANGED")
+check(B.frames[5332].health.text.text == "HP --" and not B.frames[5332].mana:IsShown(), "Target change retained previous unit resources")
 tick(0.2); check(not B.alert:IsShown(), "Reused target token triggered low HP")
-B:Command("unlock"); local frame = B.frames[5332]
+B:Command("unlock"); frame = B.frames[5332]
 frame.scripts.OnDragStart(); check(B.anchor.moving, "Unlocked drag failed")
 B.anchor.cx, B.anchor.cy = 1200, 650
 frame.scripts.OnDragStop()
 check(B.DB.x == 240 and B.DB.y == 110 and not B.anchor.moving, "Drag position was not saved")
-B:Command("size 64"); check(frame.width == 64, "Resize failed")
+B:Command("size 96"); check(frame.width == 96 and frame.health.width == 96 and frame.mana.width == 96, "Bars did not resize with icon")
+B:Command("size 64"); check(frame.width == 64 and frame.health.width == 88, "Resize failed / bars too narrow to read")
 B:Command("size 999"); check(frame.width == 64, "Invalid size accepted")
 B:Command("reset"); check(B.DB.x == 110 and B.DB.size == 44, "Position reset failed")
 B:Command("lock"); frame.scripts.OnDragStart(); check(not B.anchor.moving, "Locked drag moved")

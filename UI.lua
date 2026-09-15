@@ -43,6 +43,51 @@ function B:TargetBuddy(id)
     else TargetByName(self.profiles[id].unitName, true) end
 end
 
+local function resourceBar(frame, name, relative, offset)
+    local bar = CreateFrame("StatusBar", frame:GetName() .. name, frame)
+    bar:SetPoint("TOP", relative, "BOTTOM", 0, offset)
+    bar:SetHeight(13)
+    bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    bar.background = bar:CreateTexture(nil, "BACKGROUND")
+    bar.background:SetTexture(0.06, 0.07, 0.09, 0.95)
+    bar.background:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+    bar.background:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+    bar.text = bar:CreateFontString(nil, "OVERLAY")
+    bar.text:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    bar.text:SetPoint("CENTER", bar, "CENTER", 0, 0)
+    bar.text:SetTextColor(1, 1, 1)
+    return bar
+end
+
+local function setResource(bar, current, maximum, r, g, b, unknown)
+    bar:SetStatusBarColor(r, g, b)
+    bar:SetMinMaxValues(0, maximum or 1)
+    bar:SetValue(current or 0)
+    bar.text:SetText(current and (math.floor(current) .. " / " .. math.floor(maximum)) or unknown)
+end
+
+function B:RefreshVitals(frame, state, size)
+    local width = math.max(88, size)
+    frame.health:SetWidth(width); frame.mana:SetWidth(width)
+    if not state or state.demo then
+        -- Clearly marked samples belong to preview/TEST mode only.
+        setResource(frame.health, 80, 100, 0.2, 0.8, 0.3)
+        setResource(frame.mana, 60, 100, 0.2, 0.5, 1)
+        frame.mana:Show()
+        return
+    end
+    local hp = state.hpAt and GetTime() - state.hpAt < 1 and state.hp
+    local low = hp and state.maxHP and hp / state.maxHP <= 0.4
+    setResource(frame.health, hp, hp and state.maxHP, low and 0.95 or 0.2, low and 0.2 or 0.8, 0.3, "HP --")
+    if state.hasMana then
+        local mana = state.manaAt and GetTime() - state.manaAt < 1 and state.mana
+        setResource(frame.mana, mana, mana and state.maxMana, 0.2, 0.5, 1, "Mana --")
+        frame.mana:Show()
+    else frame.mana:Hide() end
+end
+
 function B:CreateIcon(id)
     local frame = CreateFrame("Button", "HCGhostBuddyIcon" .. id, self.anchor)
     self.frames[id] = frame
@@ -71,10 +116,8 @@ function B:CreateIcon(id)
     frame.label:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
     frame.label:SetPoint("TOP", frame, "TOP", 0, -5)
     frame.label:SetTextColor(1, 0.7, 0.2)
-    frame.health = frame:CreateFontString(nil, "OVERLAY")
-    frame.health:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-    frame.health:SetPoint("TOP", frame, "BOTTOM", 0, -3)
-    frame.health:SetTextColor(0.7, 0.9, 0.7)
+    frame.health = resourceBar(frame, "Health", frame, -3)
+    frame.mana = resourceBar(frame, "Mana", frame.health, -2)
     frame:SetScript("OnDragStart", function()
         if not B.DB.locked or IsShiftKeyDown() then
             frame.dragging = true
@@ -110,7 +153,14 @@ function B:CreateIcon(id)
             GameTooltip:AddLine(state.guid and "Bound to a specific summon." or "Awaiting summon identification: target or hover your buddy.", 1, 0.8, 0.4)
             if state.hpAt and GetTime() - state.hpAt < 1 then
                 GameTooltip:AddLine("Health: " .. state.hp .. " / " .. state.maxHP, 0.7, 1, 0.7)
+            else GameTooltip:AddLine("Health: unavailable (HP --).", 0.7, 0.7, 0.7) end
+            if state.hasMana then
+                if state.manaAt and GetTime() - state.manaAt < 1 then
+                    GameTooltip:AddLine("Mana: " .. state.mana .. " / " .. state.maxMana, 0.5, 0.7, 1)
+                else GameTooltip:AddLine("Mana: unavailable (Mana --).", 0.7, 0.7, 0.7) end
             end
+        else
+            GameTooltip:AddLine("Sample health/mana bars; not live summon values.", 1, 0.8, 0.4)
         end
         GameTooltip:AddLine("Click: target. Right-click: select for naming.", 0.55, 0.95, 1)
         GameTooltip:AddLine("Shift-drag: move. /hcg help: commands.", 0.55, 0.95, 1)
@@ -147,9 +197,8 @@ function B:Refresh()
             frame.name:SetText(self:DisplayName(id))
             frame.timer:SetText(self:FormatTime(state and remaining or self.profiles[id].duration))
             local danger = state and state.dangerUntil and state.dangerUntil > GetTime() and state.danger
-            frame.label:SetText(state and state.demo and "TEST" or danger or "")
-            local hp = state and state.hpAt and GetTime() - state.hpAt < 1 and state.maxHP and state.maxHP > 0
-            frame.health:SetText(hp and (math.ceil(state.hp / state.maxHP * 100) .. "% HP") or "")
+            frame.label:SetText(not state and "DEMO" or (state.demo and "TEST" or danger or ""))
+            self:RefreshVitals(frame, state, size)
             frame:SetAlpha(1)
             if danger or (state and remaining <= 30) then
                 frame.timer:SetTextColor(1, 0.35, 0.25); frame:SetBackdropBorderColor(1, 0.3, 0.2, 1)

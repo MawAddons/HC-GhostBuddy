@@ -1,5 +1,5 @@
 HCGhostBuddy = {
-    VERSION = "1.2.0", COLORED_NAME = "|cffb8c0ccHC|r |cffa335eeGhost Buddy|r",
+    VERSION = "1.3.0", COLORED_NAME = "|cffb8c0ccHC|r |cffa335eeGhost Buddy|r",
     states = {}, frames = {}, profiles = {}, enemies = {},
     aliases = { saber = 5332, ghost = 5332, timberling = 5218, timber = 5218 },
 }

@@ -1,8 +1,8 @@
-# HC Ghost Buddy 1.2.0
+# HC Ghost Buddy 1.3.0
 
 Named combat guardians, summon timers, and danger alerts for **WoW 1.12.1 / OctoWoW**. Part of the **MawAddons HC suite**, with the same silver HC and purple addon title.
 
-Each active summon gets its own small icon, nickname, countdown, and observed HP percentage. Your previous Ghost Saber name, position, size, and running timer migrate automatically.
+Each active summon gets its own small icon, nickname, countdown, and health/mana bars with current and maximum values. Your previous Ghost Saber name, position, size, and running timer migrate automatically.
 
 | Item | Guardian | Lifetime | Item cooldown |
 | --- | --- | --- | --- |
@@ -13,7 +13,7 @@ These defaults match the reusable trinkets reported on this server. When availab
 
 ## Install and use
 
-Extract `HC-GhostBuddy-1.2.0.zip` into `Interface\AddOns`, replacing the previous `HC-GhostBuddy` files. The final path should be `Interface\AddOns\HC-GhostBuddy\HC-GhostBuddy.toc`. Restart WoW after updating because this version adds Lua files to the TOC.
+Extract `HC-GhostBuddy-1.3.0.zip` into `Interface\AddOns`, replacing the previous `HC-GhostBuddy` files. The final path should be `Interface\AddOns\HC-GhostBuddy\HC-GhostBuddy.toc`. Use `/reload` when updating from 1.2.0; restart WoW for a first install or an upgrade from 1.1.0 or earlier.
 
 Use your trinkets normally. Successful Nampower item-cast events start the appropriate timer; matching equipped-item cooldowns provide a fallback and recover a timer already in progress. Failed casts, equip delays, and short shared cooldowns do not start a timer. Equipping two summon trinkets lets their timers run independently. Unequipping an item after detection does not stop its timer.
 
@@ -28,6 +28,14 @@ These are addon display names; they do not rename the creature on the server. Da
 
 Type `/hcg` to toggle a positioning preview. **Shift-drag** an icon to move the row. **Left-click** an active icon to target its guardian; a known GUID targets the exact creature. **Right-click** an icon selects it for commands such as `/hcg name My Buddy`.
 
+## Health and mana bars
+
+A compact **green health bar** sits below each icon, showing current / maximum HP. It turns red at 40% health or less. A **blue mana bar** appears below it only when the observed guardian has a mana pool. Empty mana still displays `0 / maximum`; creatures without mana, or with rage, focus, or energy, do not get a mana bar.
+
+Values update every 0.2 seconds while the client can observe your identified summon. Missing or stale observations show `HP --` or `Mana --` with no fill, rather than old values or a claimed death. A known GUID keeps tracking when you change target, while the unit remains available to the client. If the bars have no readings, target or hover your guardian once to help identify it.
+
+The `/hcg` positioning preview shows **DEMO** and sample bars; `/hcg test timberling` shows **TEST** with sample bars. These values are only examples, are never saved as real readings, and do not imply that a particular creature has mana on your server.
+
 ## Aggro and health alerts
 
 Alerts and sound default to on. A red banner, flashing icon, and raid-warning sound warn when:
@@ -37,7 +45,7 @@ Alerts and sound default to on. A red banner, flashing icon, and raid-warning so
 - It receives spell damage: **taking damage**, since area damage alone does not prove aggro.
 - Its observed health reaches **40% or less**: **LOW HP**.
 
-Repeated alerts for the same guardian are throttled to six seconds; low health can escalate sooner. Confirmed death clears that guardian's timer. Player death clears all timers. HP is hidden when its last observation is more than a second old.
+Repeated alerts for the same guardian are throttled to six seconds; low health can escalate sooner. Confirmed death clears that guardian's timer. Player death clears all timers. Resource values are replaced by `--` when unavailable or at least a second old.
 
 Full monitoring uses **Nampower**, already present in the referenced OctoWoW installation. The addon reads GUIDs and `summonedBy` / `createdBy` to identify your guardian. Other players' same-name guardians are rejected. Unit events, visible nameplates, your target/mouseover, group targets, and the guardian's opponent provide observations. If an active icon has not bound to the summon yet, target or hover your buddy once. `/hcg status` shows whether a specific guardian has been bound.
 
@@ -85,8 +93,8 @@ Real timestamps, individual names, custom profiles, and settings persist per cha
 
 ## Validation
 
-Run `lua tests/smoke.lua` from this repository with Lua 5.1 (the addon itself uses Lua 5.0-compatible syntax). The tests simulate vanilla event globals, UI frames, item cooldowns, and Nampower ownership/health/attack data. Coverage includes migration, independent timers, the 30-minute Timberling cooldown, duplicate and failed casts, recovery after reload, rejection of other owners, alerts before damage, low-health escalation, mute/throttling, death and out-of-range handling, custom profiles, companion exclusion, and stock-client fallback.
+Run `lua tests/smoke.lua` from this repository with Lua 5.1 (the addon itself uses Lua 5.0-compatible syntax). The tests simulate vanilla event globals, UI frames, item cooldowns, and Nampower ownership/resource/attack data. Coverage includes migration, independent timers, the 30-minute Timberling cooldown, duplicate and failed casts, recovery after reload, rejection of other owners, alerts before damage, low-health escalation, mute/throttling, death and out-of-range handling, custom profiles, companion exclusion, and stock-client fallback. Resource tests cover independent health/mana updates, zero mana, exclusion of other power types, stale observations, target changes, concurrent guardians, resizing, and marked preview samples.
 
-Live acceptance check: restart WoW, run `/hcg test timberling` and `/hcg alarmtest`, then check `/hcg status` after a real use. Verify binding by targeting your Timberling and check that clicking its icon selects that exact unit. Aggro/HP behavior still needs verification with the running server; simulated tests do not prove every server event is available.
+Live acceptance check: reload WoW, run `/hcg test timberling` and `/hcg alarmtest`, then check `/hcg status` after a real use. Verify binding by targeting your Timberling and check that clicking its icon selects that exact unit. Compare its bars with the selected unit's health and mana. Aggro/resource behavior still needs verification with the running server; simulated tests do not prove every server event or unit reading is available.
 
 API references: [Nampower functions](https://github.com/brues-code/nampower/blob/main/SCRIPTS.md), [unit fields](https://github.com/brues-code/nampower/blob/main/UNIT_FIELDS.md), and [native event arguments](https://github.com/brues-code/nampower/blob/main/EVENTS.md).

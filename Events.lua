@@ -22,7 +22,9 @@ frame:SetScript("OnEvent", function()
         elseif string.find(event, "_GUID$", 1) then B:ObserveUnit(arg1)
         elseif event == "PLAYER_TARGET_CHANGED" then
             for _, state in pairs(B.states) do
-                if not state.guid then state.manual, state.unit, state.hpAt = nil, nil, nil end
+                if not state.guid then
+                    state.manual, state.unit, state.hpAt, state.manaAt, state.hasMana = nil, nil, nil, nil, nil
+                end
             end
             B:ObserveUnit("target"); B:ObserveUnit("targettarget")
         elseif event == "UPDATE_MOUSEOVER_UNIT" then B:ObserveUnit("mouseover")

@@ -124,19 +124,36 @@ function B:Incoming(target, attacker, damage, direct)
     self:ObserveUnit(attacker)
     if direct then self:RaiseDanger(id, "AGGRO")
     elseif tonumber(damage) and tonumber(damage) > 0 then self:RaiseDanger(id, "HURT") end
-    self:ReadHealth(id)
+    self:ReadVitals(id)
 end
 
-function B:ReadHealth(id)
+function B:ReadVitals(id)
     local state = self.states[id]
     if not state or state.demo or self:Remaining(id) <= 0 then return end
+    state.hpAt, state.manaAt = nil, nil
     local unit = state.guid or state.unit
     if not unit or not UnitExists(unit) or not self:Matches(id, unit) then return end
     if not state.guid and self:Owner(unit) ~= true and not state.manual then return end
-    local hp = tonumber(self:Field(unit, "health")) or (UnitHealth and UnitHealth(unit))
-    local maxHP = tonumber(self:Field(unit, "maxHealth")) or (UnitHealthMax and UnitHealthMax(unit))
+
+    -- Vanilla UnitMana also returns rage/focus/energy: only label actual mana.
+    -- Read it independently, since one resource can be unavailable while the
+    -- other still has a valid observation.
+    local powerType = UnitPowerType and UnitPowerType(unit)
+    if powerType == 0 then
+        local mana = tonumber((self:Field(unit, "power1"))) or (UnitMana and tonumber((UnitMana(unit))))
+        local maxMana = tonumber((self:Field(unit, "maxPower1"))) or (UnitManaMax and tonumber((UnitManaMax(unit))))
+        if maxMana and maxMana > 0 then
+            state.hasMana = true
+            if mana and mana >= 0 then
+                state.mana, state.maxMana, state.manaAt = math.min(mana, maxMana), maxMana, GetTime()
+            end
+        elseif maxMana == 0 then state.hasMana = nil end
+    elseif powerType ~= nil then state.hasMana = nil end
+
+    local hp = tonumber((self:Field(unit, "health"))) or (UnitHealth and tonumber((UnitHealth(unit))))
+    local maxHP = tonumber((self:Field(unit, "maxHealth"))) or (UnitHealthMax and tonumber((UnitHealthMax(unit))))
     if not hp or not maxHP or maxHP <= 0 then return end
-    state.hp, state.maxHP, state.hpAt = hp, maxHP, GetTime()
+    state.hp, state.maxHP, state.hpAt = math.max(0, math.min(hp, maxHP)), maxHP, GetTime()
     if hp <= 0 then
         if self.DB.alerts then self:ShowAlert(self:DisplayName(id) .. " died.") end
         self:Clear(id, true)
@@ -158,7 +175,7 @@ function B:PollUnits()
             if state.guid then
                 self:CheckEnemy(self:ValidGUID(self:Field(state.guid, "target")) or (state.guid .. "target"))
             end
-            self:ReadHealth(id)
+            self:ReadVitals(id)
         end
     end
     for guid, expiry in pairs(self.enemies) do
