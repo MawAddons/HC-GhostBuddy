@@ -46,7 +46,11 @@ function B:Matches(id, unit)
     if not UnitExists or not UnitExists(unit) or not yes(UnitIsFriend("player", unit)) then return false end
     local profile = self.profiles[id]
     local name = UnitName(unit)
-    return name == profile.unitName or (profile.spellID and self:Field(unit, "createdBySpell") == profile.spellID)
+    if name == profile.unitName then return true end
+    if profile.unitNames then
+        for _, validName in ipairs(profile.unitNames) do if name == validName then return true end end
+    end
+    return profile.spellID and self:Field(unit, "createdBySpell") == profile.spellID
 end
 
 function B:Bind(id, unit, manual)

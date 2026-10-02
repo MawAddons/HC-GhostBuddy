@@ -1,4 +1,4 @@
-# HC Ghost Buddy 1.3.0
+# HC Ghost Buddy 1.4.0
 
 Named combat guardians, summon timers, and danger alerts for **WoW 1.12.1 / OctoWoW**. Part of the **MawAddons HC suite**, with the same silver HC and purple addon title.
 
@@ -8,12 +8,13 @@ Each active summon gets its own small icon, nickname, countdown, and health/mana
 | --- | --- | --- | --- |
 | Glowing Cat Figurine (5332) | Ghost Saber | 10 minutes | 60 minutes |
 | Cleansed Timberling Heart (5218) | Cleansed Timberling | 20 minutes | 30 minutes |
+| Dog Whistle (3456) | Tracking Hound / Locksey's Tracker Hound | 10 minutes | 30 minutes on OctoWoW |
 
 These defaults match the reusable trinkets reported on this server. When available, the client item record supplies its actual on-use spell and cooldown. Lifetime and item cooldown are separate: Timberling displays **20:00**, even though its item takes 30 minutes to become ready again.
 
 ## Install and use
 
-Extract `HC-GhostBuddy-1.3.0.zip` into `Interface\AddOns`, replacing the previous `HC-GhostBuddy` files. The final path should be `Interface\AddOns\HC-GhostBuddy\HC-GhostBuddy.toc`. Use `/reload` when updating from 1.2.0; restart WoW for a first install or an upgrade from 1.1.0 or earlier.
+Extract `HC-GhostBuddy-1.4.0.zip` into `Interface\AddOns`, replacing the previous `HC-GhostBuddy` files. The final path should be `Interface\AddOns\HC-GhostBuddy\HC-GhostBuddy.toc`. Use `/reload` when updating from 1.2.0 or newer; restart WoW for a first install or an upgrade from 1.1.0 or earlier.
 
 Use your trinkets normally. Successful Nampower item-cast events start the appropriate timer; matching equipped-item cooldowns provide a fallback and recover a timer already in progress. Failed casts, equip delays, and short shared cooldowns do not start a timer. Equipping two summon trinkets lets their timers run independently. Unequipping an item after detection does not stop its timer.
 
@@ -22,6 +23,7 @@ Name your buddies:
 ```text
 /hcg name timberling Birk
 /hcg name saber Spooky
+/hcg name hound Sniffer
 ```
 
 These are addon display names; they do not rename the creature on the server. Danish characters are supported. Use `off` instead of a nickname to restore the default creature name.
@@ -57,7 +59,9 @@ The addon enables Nampower's spell-go, spell-start, and auto-attack event CVars 
 
 ## More summon trinkets
 
-Equipped trinkets are automatically registered when their **English tooltip explicitly says they summon a creature to fight for/protect you for a finite number of minutes or seconds**. Their spell/cooldown metadata comes from the client when available. Unclear descriptions require a manual profile:
+Known Vanilla combat-guardian items are recognized from bags or equipment: the three Mechanical Dragonlings, Gnomish Battle Chicken, Goblin Bomb Dispenser, Cannonball Runner, both Barov Peasant Callers, Defender of the Timbermaw, Vanquished Tentacle of C'Thun, Dog Whistle, Glowing Cat Figurine, and Cleansed Timberling Heart. Only owned catalog entries appear in preview, apart from the three early companions built into the addon. Multi-summon items such as Barov track one observed servant's health while their shared lifetime is counted down.
+
+Unknown equipped trinkets are automatically registered when their **English tooltip explicitly says they summon, create, activate, or call forth a creature to fight for/protect you for a finite number of minutes or seconds**. Their spell/cooldown metadata comes from the client when available, so server-specific cooldowns replace catalog values. Unclear descriptions require a manual profile:
 
 ```text
 /hcg add ITEM_ID DURATION_MIN COOLDOWN_MIN Exact Creature Name
@@ -73,6 +77,7 @@ Use the real item ID, lifetime, cooldown, and creature name from your server. Th
 | --- | --- |
 | `/hcg` or `/ghostbuddy` | Toggle preview; active summons stay visible. |
 | `/hcg name timberling Birk` | Name Timberling independently. Use `saber` for Ghost Saber. |
+| `/hcg name hound Sniffer` | Name Locksey's Tracking Hound independently. |
 | `/hcg select timberling` | Choose the default guardian for commands without an alias. |
 | `/hcg test timberling` | Run a 20-minute TEST timer without using the item. |
 | `/hcg test saber` | Run a 10-minute TEST timer. |

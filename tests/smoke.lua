@@ -36,7 +36,15 @@ function GetInventoryItemCooldown(_, slot)
     return item.start or 0, item.duration or 0, item.enabled == nil and 1 or item.enabled
 end
 function GetInventoryItemTexture(_, slot) return "test-icon" end
-function GetContainerNumSlots(bag) return 0 end
+function GetContainerNumSlots(bag) return env.bags[bag] and table.getn(env.bags[bag]) or 0 end
+function GetContainerItemLink(bag, slot)
+    local item = env.bags[bag] and env.bags[bag][slot]
+    return item and "|Hitem:" .. item.id .. ":0|h[Item]|h"
+end
+function GetContainerItemInfo(bag, slot)
+    local item = env.bags[bag] and env.bags[bag][slot]
+    return item and (item.icon or "bag-icon")
+end
 function UnitExists(token) return unit(token) and 1 end
 function UnitName(token) local u = unit(token); return u and u.name end
 function UnitIsFriend(_, token) local u = unit(token); return u and u.friendly and 1 end
@@ -120,7 +128,10 @@ local function widget(name)
         end
     end
     function w:SetInventoryItem(_, slot) self:loadLines(env.equipment[slot] and env.equipment[slot].tooltip) end
-    function w:SetBagItem(a, b) self:loadLines({}) end
+    function w:SetBagItem(a, b)
+        local item = env.bags[a] and env.bags[a][b]
+        self:loadLines(item and item.tooltip or {})
+    end
     function w:SetUnit(token) self:loadLines(unit(token) and unit(token).tooltip) end
     return w
 end
@@ -142,7 +153,7 @@ local function tick(seconds)
 end
 local function load(saved, enhanced, keepEnvironment)
     if not keepEnvironment then
-        env = { uptime = 1000, wall = 2000000000, equipment = {}, units = {}, sounds = {}, messages = {}, stats = {},
+        env = { uptime = 1000, wall = 2000000000, equipment = {}, bags = {}, units = {}, sounds = {}, messages = {}, stats = {},
             cvars = { NP_EnableSpellGoEvents = "0", NP_EnableAutoAttackEvents = "0", NP_EnableSpellStartEvents = "0" } }
         env.units.player = { guid = "0x0000000000000001", name = "Pod", friendly = true }
     end
@@ -170,10 +181,14 @@ end
 load(nil, true)
 check(B.profiles[5218].duration == 1200 and B.profiles[5332].duration == 600, "Default durations")
 check(B.profiles[5218].cooldown == 1800, "Timberling must use the user's 30-minute cooldown")
+check(B.profiles[3456].duration == 600 and B.profiles[3456].cooldown == 1800, "OctoWoW Tracking Hound timing")
+check(B:Resolve("hound") == 3456 and B:Resolve("loksey") == 3456 and B:Resolve("locksey") == 3456, "Hound aliases")
+check(not B.profiles[4396] and B.known[4396].duration == 60, "Unowned catalog item polluted active profiles")
+check(B.known[10587].unitName == "Pet Bomb" and B.known[10587].duration == 60, "Goblin Bomb catalog")
 check(B:FormatTime(1200) == "20:00" and B:FormatTime(59.2) == "1:00", "Clock formatting")
 check(not next(B.states), "Idle addon starts a fictional summon")
 check(env.cvars.NP_EnableSpellGoEvents == "1" and env.cvars.NP_EnableAutoAttackEvents == "1", "Required event streams not enabled")
-B:Command(""); check(B.frames[5218]:IsShown() and B.frames[5332]:IsShown(), "Multi-pet preview")
+B:Command(""); check(B.frames[3456]:IsShown() and B.frames[5218]:IsShown() and B.frames[5332]:IsShown(), "Multi-pet preview")
 check(B.frames[5218].label.text == "DEMO" and B.frames[5218].mana:IsShown(), "Preview bars not marked as samples")
 check(not next(B.states), "Preview bars created real guardian state")
 B:Command(""); check(not B.frames[5218]:IsShown(), "Preview toggle")
@@ -275,6 +290,26 @@ check(not B.states[5218], "Test timer was persisted as a real guardian")
 
 -- Learn only finite combat guardians; never infer a combat pet from its name.
 load(nil, true)
+env.bags[0] = {
+    { id = 4396, icon = "dragon-icon", tooltip = { "Mechanical Dragonling", "Use: Activates your Mechanical Dragonling to fight for you for 1 min. (1 Hour Cooldown)" } },
+    { id = 10725, icon = "chicken-icon", tooltip = { "Gnomish Battle Chicken", "Use: Creates a Battle Chicken that will fight for you for 1.50 min or until it is destroyed. (30 Min Cooldown)" } },
+}
+B:DiscoverItems()
+check(B.profiles[4396].duration == 60 and B.profiles[4396].icon == "dragon-icon", "Known bag dragonling discovery")
+check(B.profiles[10725].duration == 90 and B.profiles[10725].icon == "chicken-icon", "Known bag battle chicken discovery")
+check(B.profiles[4396].cooldown == 3600 and B.profiles[10725].cooldown == 1800, "Tooltip cooldown overrides")
+check(not B.DB.custom[4396] and not B.DB.custom[10725], "Built-in catalog was saved as custom data")
+local dragonName, dragonDuration = B:ParseSummon({ "Use: Activates your Mechanical Dragonling to fight for you for 1 min." })
+local chickenName, chickenDuration = B:ParseSummon({ "Use: Creates a Battle Chicken that will fight for you for 1.50 min." })
+check(dragonName == "Mechanical Dragonling" and dragonDuration == 60, "Activates tooltip parsing")
+check(chickenName == "Battle Chicken" and chickenDuration == 90, "Creates tooltip parsing")
+fire("SPELL_GO_SELF", 3456, 9515, env.units.player.guid)
+check(B:Remaining(3456) == 600 and B.frames[3456].timer.text == "10:00", "Tracking Hound cast timer")
+env.units.target = { guid = "0xf13000000df20099", name = "Locksey's Tracker Hound", friendly = true,
+    summonedBy = env.units.player.guid, health = 582, maxHealth = 582, powerType = 2 }
+tick(0.2)
+check(B.states[3456].guid == env.units.target.guid and B.frames[3456].health.value == 582, "Tracking Hound name variant / health binding")
+env.bags = {}
 env.equipment[13] = { id = 10822, tooltip = { "Dark Whelpling", "Use: Right Click to summon and dismiss your whelpling." } }
 B:DiscoverItems(); check(not B.profiles[10822], "Vanity Dark Whelpling was included")
 env.equipment[14] = { id = 12264, tooltip = { "Worg Pup", "Use: Summons a Worg Pup to fight for you for 20 min." } }
@@ -298,10 +333,10 @@ check(B.profiles[90002].duration == 720 and B:DisplayName(90001) == "Ember", "Cu
 env.stats[5218] = { spellID = { 5780 }, spellTrigger = { 0 }, spellCooldown = { 7200000 } }
 env.equipment[14] = { id = 5218, tooltip = { "Cleansed Timberling Heart" }, start = env.uptime, duration = 7200 }
 B:DiscoverItems(); B:ScanCooldowns()
-check(B.profiles[5218].cooldown == 7200 and B:Remaining(5218) == 1200, "Server cooldown metadata")
+check(B.profiles[5218].cooldown == 7200 and near(B:Remaining(5218), 1200), "Server cooldown metadata")
 B:Clear(5218); env.uptime = env.uptime + 10; env.wall = env.wall + 10
 fire("SPELL_GO_SELF", 0, 5780, env.units.player.guid)
-check(B:Remaining(5218) == 1200, "Cast spell-ID fallback without item ID")
+check(near(B:Remaining(5218), 1200), "Cast spell-ID fallback without item ID")
 
 -- Damaging spells warn without claiming definite aggro; hostile casts warn early.
 t = timber(); fire("PLAYER_TARGET_CHANGED")

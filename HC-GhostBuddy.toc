@@ -1,8 +1,8 @@
 ## Interface: 11200
 ## Title: |cffb8c0ccHC|r |cffa335eeGhost Buddy|r
-## Notes: v1.3.0: a pet bar for those pets who don't have one :)
+## Notes: v1.4.0: a pet bar for every brave little trinket buddy :)
 ## Author: MawAddons
-## Version: 1.3.0
+## Version: 1.4.0
 ## SavedVariablesPerCharacter: HCGhostBuddyDB
 
 Profiles.lua
